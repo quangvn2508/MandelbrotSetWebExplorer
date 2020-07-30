@@ -52,7 +52,7 @@ function upToDate() {
 
 // ***************** WORKER ***********************
 // variable used in workers
-var partialWorkerCount = 0, MBSMatrixPartial, frequency, numPoints, timer = 0, worker = undefined, isWorking = false, y, minPixelsPerColorPoint, curPixelsStack, curColorPoint, colorCode;
+var partialWorkerCount = 0, MBSMatrixPartial, frequency, numPoints, timer = 0, worker = undefined, isWorking = false, y, i, minPixelsPerColorPoint, curPixelsStack, curColorPoint, colorCode;
 function startPartialWorker() {
     var y;
     if (!isWorking && !upToDate()) {
@@ -132,7 +132,6 @@ function makeImage() {
 }
 
 function receivePartialMBSData(e) {
-    var i;
     setDataFromWorker(e.data);
     partialWorkerCount--;
 
