@@ -1,4 +1,4 @@
-const WORKER_WAIT_TIME = 10, REPAINT_WAIT_TIME = 10, SCROLL_FACTOR = 0.1, BLOCK = 50;
+const WORKER_WAIT_TIME = 10, REPAINT_WAIT_TIME = 10, SCROLL_FACTOR = 0.1, BLOCK = 40;
 var canvas, context, newMBS, currentMBS = {}, imageData = undefined;
 
 init = function() {
@@ -63,88 +63,71 @@ function startPartialWorker() {
         numPoints = 0;
         
         for (y = 0; y < newMBS.resolution.y; y+=BLOCK) {
-            startAWorker(y);
+            worker = new Worker("worker.js");
+            worker.onmessage = receivePartialMBSData;
+            worker.postMessage({params: {
+                    Resolution : newMBS.resolution,
+                    MBSData : newMBS.MBSData,
+                    minY : y,
+                    maxY : Math.min(y + BLOCK - 1, newMBS.resolution.y - 1)
+            }});
             partialWorkerCount++;
         }
         isWorking = true;
     }
 }
 
-function startAWorker(y) {
-    worker = new Worker("worker.js");
-    worker.onmessage = receivePartialMBSData;
-    worker.postMessage({params: {
-            Resolution : newMBS.resolution,
-            MBSData : newMBS.MBSData,
-            minY : y,
-            maxY : Math.min(y + BLOCK - 1, newMBS.resolution.y - 1)
-    }});
-}
-
-function generateColorCode() {
-    minPixelsPerColorPoint = Math.max((numPoints / 255) | 0, 1);
-    curPixelsStack = 0;
-    curColorPoint = 0;
-    
-    colorCode = new Array(currentMBS.MBSData.maxIteration).fill(0);
-
-    for (i = 0; i < currentMBS.MBSData.maxIteration; i++) {
-        curPixelsStack += frequency[i];
-        // cumulative frequency large enough to move to next color value.
-        if (curPixelsStack >= minPixelsPerColorPoint) {
-            colorRange = 0;
-            // If the frequency too high and occupy more than one color value.
-            while (curPixelsStack >= minPixelsPerColorPoint) {
-                curPixelsStack -= minPixelsPerColorPoint;
-                colorRange++; // find the range of color value occupied
-            }
-            
-            colorCode[i] = curColorPoint + colorRange/2; // get middle color value from range
-            curColorPoint += colorRange; // increase to next color value
-        }else {
-            colorCode[i] = curColorPoint; // if cumulative frequency not enough to move to next color value then use current color value.
-        }
-    }
-}
-
-function setDataFromWorker(data) {
-    var y;
-    for (y = data.params.minY; y <= data.params.maxY; y++) {
-        MBSMatrixPartial[y] = data.MBSMatrix[y - data.params.minY];
-    }
-    for (i = 0; i < data.params.MBSData.maxIteration; i++) {
-        frequency[i] += data.FrequencyData.Frequency[i];
-    }
-    numPoints += data.FrequencyData.Count;
-}
-
-function makeImage() {
-    imageData = context.createImageData(currentMBS.resolution.x, currentMBS.resolution.y);
-    
-    for (i = 0; i < imageData.data.length/4; i++) {
-        if (MBSMatrixPartial[(i/currentMBS.resolution.x)|0][(i%currentMBS.resolution.x)] === currentMBS.MBSData.maxIteration) {
-            imageData.data[i*4] = 0;
-        } else {
-            imageData.data[i*4] = colorCode[MBSMatrixPartial[(i/currentMBS.resolution.x)|0][(i%currentMBS.resolution.x)]];
-        }
-        imageData.data[i*4+3] =  255;
-    }
-}
-
 function receivePartialMBSData(e) {
-    var i;
-    setDataFromWorker(e.data);
+    var y, i;
+    for (y = e.data.params.minY; y <= e.data.params.maxY; y++) {
+        MBSMatrixPartial[y] = e.data.MBSMatrix[y - e.data.params.minY];
+    }
+    for (i = 0; i < e.data.params.MBSData.maxIteration; i++) {
+        frequency[i] += e.data.FrequencyData.Frequency[i];
+    }
+    numPoints += e.data.FrequencyData.Count;
     partialWorkerCount--;
 
     if (partialWorkerCount === 0) {
         currentMBS.resolution = e.data.params.Resolution;
         currentMBS.MBSData = e.data.params.MBSData;
 
-        generateColorCode();
-        makeImage();
+        minPixelsPerColorPoint = Math.max((numPoints / 255) | 0, 1);
+        curPixelsStack = 0;
+        curColorPoint = 0;
+        
+        colorCode = new Array(e.data.params.MBSData.maxIteration).fill(0);
 
-        isWorking = false;
+        for (i = 0; i < e.data.params.MBSData.maxIteration; i++) {
+            curPixelsStack += frequency[i];
+            // cumulative frequency large enough to move to next color value.
+            if (curPixelsStack >= minPixelsPerColorPoint) {
+                colorRange = 0;
+                // If the frequency too high and occupy more than one color value.
+                while (curPixelsStack >= minPixelsPerColorPoint) {
+                    curPixelsStack -= minPixelsPerColorPoint;
+                    colorRange++; // find the range of color value occupied
+                }
+                
+                colorCode[i] = curColorPoint + colorRange/2; // get middle color value from range
+                curColorPoint += colorRange; // increase to next color value
+            }else {
+                colorCode[i] = curColorPoint; // if cumulative frequency not enough to move to next color value then use current color value.
+            }
+        }
+
+        imageData = context.createImageData(currentMBS.resolution.x, currentMBS.resolution.y);
+    
+        for (i = 0; i < imageData.data.length/4; i++) {
+            if (MBSMatrixPartial[(i/currentMBS.resolution.x)|0][(i%currentMBS.resolution.x)] === currentMBS.MBSData.maxIteration) {
+                imageData.data[i*4] = 0;
+            } else {
+                imageData.data[i*4] = colorCode[MBSMatrixPartial[(i/currentMBS.resolution.x)|0][(i%currentMBS.resolution.x)]];
+            }
+            imageData.data[i*4+3] =  255;
+        }
         console.log((new Date() - timer) + " ms");
+        isWorking = false;
     }
 }
 
