@@ -1,9 +1,18 @@
 const WORKER_WAIT_TIME = 10, REPAINT_WAIT_TIME = 10, SCROLL_FACTOR = 0.1, BLOCK = 50;
-var canvas, context, newMBS, currentMBS = {}, imageData = undefined;
+const initialParams = {
+    rangeX : 3
+};
+var canvas, context, newMBS, currentMBS = {}, imageData = undefined, info;
 
 init = function() {
     canvas = document.getElementById("main-canvas");
     context = canvas.getContext('2d');
+    info = {
+        zoom_ele : document.getElementById("zoom-info"),
+        position_ele : document.getElementById("position-info"),
+        range_ele : document.getElementById("range-info"),
+        time_ele : document.getElementById("time-info")
+    };
 
     newMBS = {
         resolution : {},
@@ -18,7 +27,9 @@ init = function() {
 
     resizeWindow();
 
-    canvas.addEventListener('wheel', scroll, false);
+    canvas.addEventListener('wheel', zoom, false);
+    canvas.addEventListener('mousedown', click, false);
+    canvas.addEventListener('mouseup', release, false);
     window.addEventListener("resize", resizeWindow);
 
     setInterval(draw, REPAINT_WAIT_TIME);
@@ -42,13 +53,15 @@ function draw() {
     context.canvas.style.width = (image.MBSData.rangeX/newMBS.MBSData.rangeX*100) + "%";
     context.canvas.style.height = (image.MBSData.rangeX/newMBS.MBSData.rangeX*100) + "%";
 
+    info.zoom_ele.innerHTML = "x" + ((initialParams.rangeX / image.MBSData.rangeX).toPrecision(3));
+    info.position_ele.innerHTML = `(${image.MBSData.minR},${image.MBSData.minI})`;
+    info.range_ele.innerHTML = `dx: ${newMBS.MBSData.rangeX.toPrecision(10)}`;
+
     canvas.style.transform = "translate(" + x + "px," + y + "px)";
     context.putImageData(imageData, 0, 0);
 }
 
-function upToDate() {
-    return  JSON.stringify(newMBS) === JSON.stringify(currentMBS);
-}
+function upToDate() { return  JSON.stringify(newMBS) === JSON.stringify(currentMBS); }
 
 // ***************** WORKER ***********************
 // variable used in workers
@@ -141,12 +154,13 @@ function receivePartialMBSData(e) {
         makeImage();
 
         isWorking = false;
-        console.log((new Date() - timer) + " ms");
+        
+        info.time_ele.innerHTML = `${(new Date() - timer)} ms`;
     }
 }
 
 // Mandelbrot Set functionalities
-async function scroll(e) {
+function zoom(e) {
     const zoomFactor =  1 + (e.deltaY>0? 1 : -1)*SCROLL_FACTOR;
     let splitX, splitY;
     splitX = newMBS.MBSData.rangeX * (e.pageX / newMBS.resolution.x) + newMBS.MBSData.minR;
@@ -156,4 +170,17 @@ async function scroll(e) {
     newMBS.MBSData.rangeX *= zoomFactor;
     newMBS.MBSData.minR = splitX - (splitX - newMBS.MBSData.minR) * zoomFactor;
     newMBS.MBSData.minI = splitY - (splitY - newMBS.MBSData.minI) * zoomFactor;
+}
+
+var mouseposition;
+function click(e) {
+    mouseposition = {x : e.pageX, y : e.pageY};
+}
+
+function release(e) {
+    dx = mouseposition.x - e.pageX;
+    dy = mouseposition.y - e.pageY;
+
+    newMBS.MBSData.minR += (dx/newMBS.resolution.x) * newMBS.MBSData.rangeX;
+    newMBS.MBSData.minI += (dy/newMBS.resolution.x) * newMBS.MBSData.rangeX;
 }

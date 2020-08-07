@@ -7,4 +7,6 @@ This project is similar with my previous project (Mandelbrot-set-explorer) which
 ### Current functionalities:
 
 * Zoom by scrolling
+* Pan by dragging
+* Display basic data (current zoom factor, real number range, top-left position, ellapsed time to compute a frame).
 * To be continue...

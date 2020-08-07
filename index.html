@@ -4,17 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mandelbrot Set Explorer</title>
-    <style>
-        * { padding: 0; margin: 0; }
-        html, body, .canvas-container, .view { width: 100%; height: 100%; overflow: hidden; }
-        body{background-color: chocolate;}
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="canvas-container">
         <canvas id="main-canvas" class="view"></canvas>
     </div>
     
+    <aside class="info-container">
+        <p id="zoom-info">x10000</p>
+        <p id="range-info">0.3</p>
+        <p id="position-info">(1.0,2.0)</p>
+        <p id="time-info">1ms</p>
+    </aside>
+
+    <aside class="tooltip">
+        <img src="question.svg" alt="" width="100%">
+        <span class="tooltiptext"><pre>
+Functionalities:
+- Zoom: Mouse-scroll
+- Pan: Mouse-drag
+Data:
+- Zoom factor (x1)
+- Real number range (dx)
+- Top-left position (x, y)
+- Ellapsed time to compute 1 frame (ms)</pre></span>
+    </aside>
+
     <script src="Main.js"></script>
 </body>
 </html>
