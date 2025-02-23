@@ -2,9 +2,28 @@
 #include <iostream>
 #include <vector>
 
+int calcMandel(double Real, double Img, int maxIt, double r2)
+{
+    int it = 0;
+    double zr = 0, zi = 0, zr2, zi2, nzr, nzi;
+
+    while (it < maxIt) {
+        zr2 = zr * zr;
+        zi2 = zi * zi;
+        nzr = zr2 - zi2 + Real;
+        nzi = 2 * zr * zi + Img;
+        zr = nzr;
+        zi = nzi;
+        if ((zr2 + zi2) > r2)
+            break;
+        it++;
+    }
+    return it;
+}
+
 extern "C" {
     EMSCRIPTEN_KEEPALIVE
-    void calcMandel(
+    int calcMandel(
             int resolutionX,
             int resolutionY,
             double minR,
@@ -12,21 +31,32 @@ extern "C" {
             double rangeX,
             int maxIteration,
             double radiusSquare,
-            int* outputArray) 
+            int* outputArray,
+            int* frequencyArray)
     {
+        std::vector<std::vector<int>> MBSMatrix(resolutionY, std::vector<int>(resolutionX, 0));
+        std::vector<int> frequency(maxIteration);
+        int numPoints = 0;
 
-        std::cout << "Hello World!" << std::endl
-            << "resolutionX: " << resolutionX << std::endl
-            << "resolutionY: " << resolutionY << std::endl
-            << "minR: " << minR << std::endl
-            << "minI: " << minI << std::endl
-            << "rangeX: " << rangeX << std::endl
-            << "maxIteration: " << maxIteration << std::endl
-            << "radiusSquare: " << radiusSquare << std::endl;
+        double step = rangeX / resolutionX;
 
-        outputArray[0] = 1;
-        outputArray[1] = 2;
-        outputArray[2] = 3;
-        outputArray[3] = 4;
+        for (int y = 0; y < resolutionY; y++) {
+            double Img = minI + (0.5 + y)*step;
+            for (int x = 0; x < resolutionX; x++) {
+                double Real = minR + (0.5 + x)*step;
+                MBSMatrix[y][x] = calcMandel(Real, Img, maxIteration, radiusSquare);
+            }
+        }
+
+        for (int y = 0; y < resolutionY; y++) {
+            for (int x = 0; x < resolutionX; x++) {
+                if (MBSMatrix[y][x] < maxIteration) {
+                    frequency[MBSMatrix[y][x]]++;
+                    numPoints++;
+                }
+            }
+        }
+
+        return numPoints;
     }
 }

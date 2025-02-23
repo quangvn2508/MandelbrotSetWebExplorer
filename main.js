@@ -57,11 +57,12 @@ function upToDate() { return  JSON.stringify(newMBS) === JSON.stringify(currentM
 var partialWorkerCount = 0, MBSMatrixPartial, frequency, numPoints, timer = 0, worker = undefined, isWorking = false, minPixelsPerColorPoint, curPixelsStack, curColorPoint, colorCode;
 function regenerate() {
     if (!isWorking && !upToDate()) {
+        const outputArrayPointer = Module._malloc(4 * Int32Array.BYTES_PER_ELEMENT);
+        const frequencyArrayPointer = Module._malloc(4 * Int32Array.BYTES_PER_ELEMENT);
         timer = new Date(); // Ellapsed timer
         
-        const outputArrayPointer = Module._malloc(4 * Int32Array.BYTES_PER_ELEMENT);
 
-        console.log(Module._calcMandel(
+        console.log("numPoints", Module._calcMandel(
             newMBS.resolution.x, 
             newMBS.resolution.y, 
             newMBS.MBSData.minR, 
@@ -69,11 +70,16 @@ function regenerate() {
             newMBS.MBSData.rangeX, 
             newMBS.MBSData.maxIteration, 
             newMBS.MBSData.radiusSquare,
-            outputArrayPointer));
+            outputArrayPointer,
+            frequencyArrayPointer));
+
         const outputArray = new Int32Array(Module.HEAP32.buffer, outputArrayPointer, 4);
-        console.log(outputArray);
+        const frequencyArray = new Int32Array(Module.HEAP32.buffer, frequencyArrayPointer, 4);
+        console.log("took", new Date() - timer, "ms");
+        console.log(outputArray, frequencyArray);
         Module._free(outputArrayPointer);
         isWorking = true;
+
     }
 }
 
