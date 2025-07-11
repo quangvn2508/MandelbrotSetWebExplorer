@@ -10,3 +10,18 @@ This project is similar with my previous project (Mandelbrot-set-explorer) which
 * Pan by dragging
 * Display basic data (current zoom factor, real number range, top-left position, ellapsed time to compute a frame).
 * To be continue...
+
+
+# Build
+- Require emsdk
+- Require python3
+- When serve the files, need to include `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` in the header.
+
+```
+source <PATH_TO_EMSDK>/emsdk_env.sh
+emcc code.cpp -o code.js -sEXPORTED_FUNCTIONS=_calcMandel,_malloc,_free -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE=1 -sEXPORT_NAME=CustomModule -sASSERTIONS -sALLOW_MEMORY_GROWTH -O3 -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=<pool_size>
+python3 serve.py
+```
+
+`pool_size` is the number of threads used, can be calculated by max `window.innerHeight` devided by `BLOCK_SIZE` (i.e. 50).
